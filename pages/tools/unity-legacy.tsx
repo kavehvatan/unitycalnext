@@ -2,12 +2,13 @@ import Head from "next/head";
 import React from "react";
 
 export default function UnityLegacyExact() {
-  return (<>
-    <Head>
-      <title>Unity XT Sizer</title>
-      <div dangerouslySetInnerHTML={ { __html: `<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>` } } />
-    </Head>
-    <div dangerouslySetInnerHTML={ { __html: `<h2>Unity XT RAID Calculator</h2>
+  return (
+    <>
+      <Head>
+        <title>Unity XT Sizer</title>
+        <div dangerouslySetInnerHTML={ { __html: `<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>` } } />
+      </Head>
+      <div dangerouslySetInnerHTML={ { __html: `<h2>Unity XT RAID Calculator</h2>
 <form method="post">
 <div class="mb-3"><label>Model</label>
 <select name="model" class="form-select w-auto">{% for m,c in models.items() %}
@@ -77,9 +78,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const modelSel=document.querySelector('select[name="model"]');
     const cap=modelCaps[modelSel?.value]||1500;
 
-    const setSel=document.querySelector(\`select[name="${tier}_set"]\`);
-    const spareSel=document.querySelector(\`select[name="${tier}_spare"]\`);
-    const countSel=document.querySelector(\`select[name="${tier}_count"]\`);
+    const setSel=document.querySelector(\`select[name="\${tier}_set"]\`);
+    const spareSel=document.querySelector(\`select[name="\${tier}_spare"]\`);
+    const countSel=document.querySelector(\`select[name="\${tier}_count"]\`);
     if(!setSel||!spareSel||!countSel) return;
 
     const {size}=parseSet(setSel.value);
@@ -94,8 +95,8 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function rebuildSets(tier){
-    const raidSel=document.querySelector(\`select[name="${tier}_raid"]\`);
-    const setSel=document.querySelector(\`select[name="${tier}_set"]\`);
+    const raidSel=document.querySelector(\`select[name="\${tier}_raid"]\`);
+    const setSel=document.querySelector(\`select[name="\${tier}_set"]\`);
     if(!raidSel||!setSel) return;
     const opts=raidSets[raidSel.value]||[];
     const prev=setSel.value;
@@ -107,10 +108,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Bind events
   tiers.forEach(tier=>{
-    const raidSel = document.querySelector(\`select[name="${tier}_raid"]\`);
-    const setSel  = document.querySelector(\`select[name="${tier}_set"]\`);
-    const spareSel= document.querySelector(\`select[name="${tier}_spare"]\`);
-    const countSel= document.querySelector(\`select[name="${tier}_count"]\`);
+    const raidSel = document.querySelector(\`select[name="\${tier}_raid"]\`);
+    const setSel  = document.querySelector(\`select[name="\${tier}_set"]\`);
+    const spareSel= document.querySelector(\`select[name="\${tier}_spare"]\`);
+    const countSel= document.querySelector(\`select[name="\${tier}_count"]\`);
     if(raidSel)  raidSel.addEventListener('change', ()=>rebuildSets(tier));
     if(setSel)   setSel.addEventListener('change', ()=>rebuildCounts(tier));
     if(spareSel) spareSel.addEventListener('change', ()=>{ 
@@ -126,7 +127,7 @@ document.addEventListener('DOMContentLoaded', function () {
   if(modelSel) modelSel.addEventListener('change', ()=>tiers.forEach(rebuildCounts));
 
   function getCount(tier){
-    const el = document.querySelector(\`select[name="${tier}_count"]\`);
+    const el = document.querySelector(\`select[name="\${tier}_count"]\`);
     return el ? parseInt(el.value || "0",10) : 0;
   }
   function updateAvailability(){
@@ -135,7 +136,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const tiersList=["Extreme Performance","Performance","Capacity"];
     // for each tier, compute remaining = cap - sum(other tiers)
     tiersList.forEach(tier=>{
-      const countSel=document.querySelector(\`select[name="${tier}_count"]\`);
+      const countSel=document.querySelector(\`select[name="\${tier}_count"]\`);
       if(!countSel) return;
       const others = tiersList.filter(t=>t!==tier).map(getCount).reduce((a,b)=>a+b,0);
       const remaining = Math.max(cap - others, 0);
@@ -155,10 +156,10 @@ document.addEventListener('DOMContentLoaded', function () {
   function hookAvailability(){
     const tiersList=["Extreme Performance","Performance","Capacity"];
     tiersList.forEach(tier=>{
-      const countSel=document.querySelector(\`select[name="${tier}_count"]\`);
-      const setSel=document.querySelector(\`select[name="${tier}_set"]\`);
-      const spareSel=document.querySelector(\`select[name="${tier}_spare"]\`);
-      const raidSel=document.querySelector(\`select[name="${tier}_raid"]\`);
+      const countSel=document.querySelector(\`select[name="\${tier}_count"]\`);
+      const setSel=document.querySelector(\`select[name="\${tier}_set"]\`);
+      const spareSel=document.querySelector(\`select[name="\${tier}_spare"]\`);
+      const raidSel=document.querySelector(\`select[name="\${tier}_raid"]\`);
       countSel && countSel.addEventListener('change', updateAvailability);
       setSel && setSel.addEventListener('change', ()=>{rebuildCounts(tier); updateAvailability();});
       spareSel && spareSel.addEventListener('change', ()=>{ if(countSel) countSel.value="0"; rebuildCounts(tier); updateAvailability();});
@@ -173,8 +174,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
 });
 </script>` } } />
-    <script dangerouslySetInnerHTML={ { __html: `<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>` } } />
-    <script dangerouslySetInnerHTML={ { __html: `<script>
+      <script dangerouslySetInnerHTML={ { __html: `` } } />
+      <script dangerouslySetInnerHTML={ { __html: `
 document.addEventListener('DOMContentLoaded', function () {
   const tiers = ["Extreme Performance","Performance","Capacity"];
   const raidSets = {{ raid_sets | tojson }};
@@ -197,9 +198,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const modelSel=document.querySelector('select[name="model"]');
     const cap=modelCaps[modelSel?.value]||1500;
 
-    const setSel=document.querySelector(\`select[name="${tier}_set"]\`);
-    const spareSel=document.querySelector(\`select[name="${tier}_spare"]\`);
-    const countSel=document.querySelector(\`select[name="${tier}_count"]\`);
+    const setSel=document.querySelector(\`select[name="\${tier}_set"]\`);
+    const spareSel=document.querySelector(\`select[name="\${tier}_spare"]\`);
+    const countSel=document.querySelector(\`select[name="\${tier}_count"]\`);
     if(!setSel||!spareSel||!countSel) return;
 
     const {size}=parseSet(setSel.value);
@@ -214,8 +215,8 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function rebuildSets(tier){
-    const raidSel=document.querySelector(\`select[name="${tier}_raid"]\`);
-    const setSel=document.querySelector(\`select[name="${tier}_set"]\`);
+    const raidSel=document.querySelector(\`select[name="\${tier}_raid"]\`);
+    const setSel=document.querySelector(\`select[name="\${tier}_set"]\`);
     if(!raidSel||!setSel) return;
     const opts=raidSets[raidSel.value]||[];
     const prev=setSel.value;
@@ -227,10 +228,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Bind events
   tiers.forEach(tier=>{
-    const raidSel = document.querySelector(\`select[name="${tier}_raid"]\`);
-    const setSel  = document.querySelector(\`select[name="${tier}_set"]\`);
-    const spareSel= document.querySelector(\`select[name="${tier}_spare"]\`);
-    const countSel= document.querySelector(\`select[name="${tier}_count"]\`);
+    const raidSel = document.querySelector(\`select[name="\${tier}_raid"]\`);
+    const setSel  = document.querySelector(\`select[name="\${tier}_set"]\`);
+    const spareSel= document.querySelector(\`select[name="\${tier}_spare"]\`);
+    const countSel= document.querySelector(\`select[name="\${tier}_count"]\`);
     if(raidSel)  raidSel.addEventListener('change', ()=>rebuildSets(tier));
     if(setSel)   setSel.addEventListener('change', ()=>rebuildCounts(tier));
     if(spareSel) spareSel.addEventListener('change', ()=>{ 
@@ -246,7 +247,7 @@ document.addEventListener('DOMContentLoaded', function () {
   if(modelSel) modelSel.addEventListener('change', ()=>tiers.forEach(rebuildCounts));
 
   function getCount(tier){
-    const el = document.querySelector(\`select[name="${tier}_count"]\`);
+    const el = document.querySelector(\`select[name="\${tier}_count"]\`);
     return el ? parseInt(el.value || "0",10) : 0;
   }
   function updateAvailability(){
@@ -255,7 +256,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const tiersList=["Extreme Performance","Performance","Capacity"];
     // for each tier, compute remaining = cap - sum(other tiers)
     tiersList.forEach(tier=>{
-      const countSel=document.querySelector(\`select[name="${tier}_count"]\`);
+      const countSel=document.querySelector(\`select[name="\${tier}_count"]\`);
       if(!countSel) return;
       const others = tiersList.filter(t=>t!==tier).map(getCount).reduce((a,b)=>a+b,0);
       const remaining = Math.max(cap - others, 0);
@@ -275,10 +276,10 @@ document.addEventListener('DOMContentLoaded', function () {
   function hookAvailability(){
     const tiersList=["Extreme Performance","Performance","Capacity"];
     tiersList.forEach(tier=>{
-      const countSel=document.querySelector(\`select[name="${tier}_count"]\`);
-      const setSel=document.querySelector(\`select[name="${tier}_set"]\`);
-      const spareSel=document.querySelector(\`select[name="${tier}_spare"]\`);
-      const raidSel=document.querySelector(\`select[name="${tier}_raid"]\`);
+      const countSel=document.querySelector(\`select[name="\${tier}_count"]\`);
+      const setSel=document.querySelector(\`select[name="\${tier}_set"]\`);
+      const spareSel=document.querySelector(\`select[name="\${tier}_spare"]\`);
+      const raidSel=document.querySelector(\`select[name="\${tier}_raid"]\`);
       countSel && countSel.addEventListener('change', updateAvailability);
       setSel && setSel.addEventListener('change', ()=>{rebuildCounts(tier); updateAvailability();});
       spareSel && spareSel.addEventListener('change', ()=>{ if(countSel) countSel.value="0"; rebuildCounts(tier); updateAvailability();});
@@ -292,6 +293,7 @@ document.addEventListener('DOMContentLoaded', function () {
   setTimeout(hookAvailability, 0);
 
 });
-</script>` } } />
-  </>);
+` } } />
+    </>
+  );
 }
