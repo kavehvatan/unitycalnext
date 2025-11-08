@@ -29,7 +29,7 @@ const TIERS: Array<[string, string[]]> = [
 function per32(s: string) { return s === "2/32" ? 2 : 1; }
 function parseSet(v: string) { return v.split("+").map(n => parseInt(n,10)); }
 
-/** ported from Flask: iterative valid counts by set size, model cap and spare policy */
+/** same as Flask: total drives options that fit into model limit with spare policy */
 function generateCounts(setSize: number, maxDrives: number, per: number): number[] {
   const options: number[] = [];
   let i = 1;
@@ -64,19 +64,60 @@ export default function Page() {
   const setRow = (tier: string, patch: Partial<Row>) =>
     setRows(prev => ({ ...prev, [tier]: { ...prev[tier], ...patch } }));
 
-  const suggestions: Record<string, number[]> = useMemo(() => {
-    const out: Record<string, number[]> = {};
+  // How many drives are already used by all other tiers (sum of "count", which stores total drives incl. spares)
+  const usedByOthers = (currentTier: string) =>
+    Object.entries(rows).reduce((sum, [t, r]) => sum + (t === currentTier ? 0 : (r.count || 0)), 0);
+
+  // For display: all theoretical totals (0 + valid totals). For greying: mark options that exceed remaining.
+  const suggestions: Record<string, { value: number; disabled: boolean }[]> = useMemo(() => {
+    const out: Record<string, { value: number; disabled: boolean }[]> = {};
     const max = MODELS[model];
+
     for (const [tier] of TIERS) {
       const r = rows[tier];
       const [a,b] = parseSet(r.set);
       const setSize = a + b;
-      const opts = generateCounts(setSize, max, per32(r.spare));
-      out[tier] = [0, ...opts];
-      if (!out[tier].includes(r.count) && r.count > 0) out[tier].splice(1,0,r.count);
+      const per = per32(r.spare);
+
+      const remaining = Math.max(0, max - usedByOthers(tier));
+      const valids = generateCounts(setSize, remaining, per);
+
+      // Build a list from 0 up to what would be allowed by FULL model cap, but grey those beyond remaining.
+      const fullValid = generateCounts(setSize, max, per);
+      const base: { value: number; disabled: boolean }[] = [{ value: 0, disabled: false }];
+      for (const v of fullValid) base.push({ value: v, disabled: !valids.includes(v) });
+
+      // keep current if outside (to avoid sudden loss)
+      if (r.count > 0 && !base.some(o => o.value === r.count)) {
+        base.splice(1, 0, { value: r.count, disabled: r.count > remaining });
+      }
+
+      out[tier] = base;
     }
     return out;
   }, [rows, model]);
+
+  // If a row has a count that no longer fits remaining, auto-downgrade to 0
+  const coerceCountsToRemaining = () => {
+    setRows(prev => {
+      const max = MODELS[model];
+      const next = { ...prev };
+      for (const [tier] of TIERS) {
+        const rem = Math.max(0, max - usedByOthers(tier));
+        const r = next[tier];
+        const [a,b] = parseSet(r.set);
+        const setSize = a + b;
+        const per = per32(r.spare);
+        const valids = generateCounts(setSize, rem, per);
+        if (r.count > 0 && !valids.includes(r.count)) next[tier] = { ...r, count: 0 };
+      }
+      return next;
+    });
+  };
+
+  // Coerce when model changes or any row (set/spare/raid/count) changes
+  const onModelChange = (m: string) => { setModel(m); setTimeout(coerceCountsToRemaining, 0) };
+  const onRowChange = (tier: string, patch: Partial<Row>) => { setRow(tier, patch); setTimeout(coerceCountsToRemaining, 0) };
 
   async function onCalc() {
     setLoading(true);
@@ -113,7 +154,7 @@ export default function Page() {
 
       <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:16}}>
         <div style={{width:90,fontWeight:700}}>Model</div>
-        <select value={model} onChange={e=>setModel(e.target.value)} style={{padding:'10px 12px',border:'1px solid #d1d5db',borderRadius:10}}>
+        <select value={model} onChange={e=>onModelChange(e.target.value)} style={{padding:'10px 12px',border:'1px solid #d1d5db',borderRadius:10}}>
           {Object.keys(MODELS).map(m => <option key={m} value={m}>{m}</option>)}
         </select>
       </div>
@@ -130,29 +171,35 @@ export default function Page() {
       {TIERS.map(([tier, disks]) => {
         const r = rows[tier];
         const setOptions = RAID_SETS[r.raid];
-        const counts = suggestions[tier] || [0];
+        const items = suggestions[tier] || [{ value: 0, disabled: false }];
+        const max = MODELS[model];
+        const rem = Math.max(0, max - usedByOthers(tier));
+        const [a,b] = parseSet(r.set);
+        const minNeeded = (a + b) + Math.max(per32(r.spare), per32(r.spare) * Math.ceil((a + b) / 32));
+        const rowGrey = rem < minNeeded && r.count === 0; // grey row when no capacity remains for this tier (unless already selected)
+
         return (
-          <div key={tier} style={{display:'grid',gridTemplateColumns:'220px repeat(5,1fr)',gap:12,alignItems:'center',margin:'8px 0'}}>
+          <div key={tier} style={{display:'grid',gridTemplateColumns:'220px repeat(5,1fr)',gap:12,alignItems:'center',margin:'8px 0', opacity: rowGrey ? 0.5 : 1}}>
             <div style={{fontWeight:700}}>{tier}</div>
 
-            <select value={r.disk} onChange={e=>setRow(tier,{disk:e.target.value})} style={{padding:'10px 12px',border:'1px solid #d1d5db',borderRadius:10}}>
+            <select value={r.disk} onChange={e=>onRowChange(tier,{disk:e.target.value})} style={{padding:'10px 12px',border:'1px solid #d1d5db',borderRadius:10}}>
               {disks.map(d => <option key={d}>{d}</option>)}
             </select>
 
-            <select value={r.raid} onChange={e=>setRow(tier,{raid:e.target.value,set: RAID_SETS[e.target.value][0], count:0})} style={{padding:'10px 12px',border:'1px solid #d1d5db',borderRadius:10}}>
+            <select value={r.raid} onChange={e=>onRowChange(tier,{raid:e.target.value,set: RAID_SETS[e.target.value][0], count:0})} style={{padding:'10px 12px',border:'1px solid #d1d5db',borderRadius:10}}>
               {RAID_OPTIONS[tier].map(rt => <option key={rt}>{rt}</option>)}
             </select>
 
-            <select value={r.spare} onChange={e=>setRow(tier,{spare:e.target.value, count:0})} style={{padding:'10px 12px',border:'1px solid #d1d5db',borderRadius:10}}>
+            <select value={r.spare} onChange={e=>onRowChange(tier,{spare:e.target.value, count:0})} style={{padding:'10px 12px',border:'1px solid #d1d5db',borderRadius:10}}>
               <option>1/32</option><option>2/32</option>
             </select>
 
-            <select value={r.set} onChange={e=>setRow(tier,{set:e.target.value, count:0})} style={{padding:'10px 12px',border:'1px solid #d1d5db',borderRadius:10}}>
+            <select value={r.set} onChange={e=>onRowChange(tier,{set:e.target.value, count:0})} style={{padding:'10px 12px',border:'1px solid #d1d5db',borderRadius:10}}>
               {setOptions.map(s => <option key={s}>{s}</option>)}
             </select>
 
-            <select value={String(r.count)} onChange={e=>setRow(tier,{count: parseInt(e.target.value,10)})} style={{padding:'10px 12px',border:'1px solid #d1d5db',borderRadius:10}}>
-              {counts.map(c => <option key={c} value={c}>{c}</option>)}
+            <select value={String(r.count)} onChange={e=>onRowChange(tier,{count: parseInt(e.target.value,10)})} style={{padding:'10px 12px',border:'1px solid #d1d5db',borderRadius:10}}>
+              {items.map(o => <option key={o.value} value={o.value} disabled={o.disabled}>{o.value}</option>)}
             </select>
           </div>
         );
