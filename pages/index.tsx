@@ -1,6 +1,5 @@
 import { useState } from "react";
 import Head from "next/head";
-import "../styles/unity.css";
 
 const TIERS: Array<[string, string[]]> = [
   ["Extreme Performance", ["400GB", "800GB", "1.6TB", "1.92TB", "3.2TB", "3.84TB", "7.68TB", "15.36TB"]],
@@ -42,7 +41,6 @@ const parseSet = (v: string) => {
 };
 const validCounts = (cap: number, setSize: number, spare: number) => {
   const arr: number[] = [];
-  // Simple upper-bound; you can refine later with exact Unity caps
   for (let i = 0; i <= 96; i++) arr.push(i);
   return arr;
 };
@@ -65,7 +63,6 @@ export default function Home() {
     const r = rows[tier];
     const setSize = parseSet(r.set).size;
     const per = per32(r.spare);
-    // You had a custom policy; keep it lenient for UI, API will validate
     return validCounts(cap, setSize, per);
   };
 
@@ -110,27 +107,18 @@ export default function Home() {
 
   return (
     <>
-      <Head>
-        <title>Unity XT RAID Calculator</title>
-      </Head>
+      <Head><title>Unity XT RAID Calculator</title></Head>
       <main className="unity-wrap">
         <h1 className="unity-title">Unity XT RAID Calculator</h1>
-
-        {/* Model row */}
         <div className="row model-row">
           <div className="label">Model</div>
           <div className="controls">
             <select className="control" value={model} onChange={(e) => setModel(e.target.value)}>
-              {MODELS.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
+              {MODELS.map((m) => (<option key={m} value={m}>{m}</option>))}
             </select>
           </div>
         </div>
 
-        {/* Header */}
         <div className="grid header">
           <div />
           <div className="sub">Disk</div>
@@ -140,49 +128,33 @@ export default function Home() {
           <div className="sub">Count</div>
         </div>
 
-        {/* Tier rows */}
         {TIERS.map(([tier, disks]) => (
           <div className="grid" key={tier}>
             <div className="label tier">{tier}</div>
 
             <select className="control" value={rows[tier].disk} onChange={(e) => setRow(tier, { disk: e.target.value })}>
-              {disks.map((d) => (
-                <option key={d}>{d}</option>
-              ))}
+              {disks.map((d) => (<option key={d}>{d}</option>))}
             </select>
 
-            <select
-              className="control"
-              value={rows[tier].raid}
-              onChange={(e) => setRow(tier, { raid: e.target.value, set: RAID_SETS[e.target.value][0] })}
-            >
-              {RAID_OPTIONS.map((rt) => (
-                <option key={rt}>{rt}</option>
-              ))}
+            <select className="control" value={rows[tier].raid} onChange={(e) => setRow(tier, { raid: e.target.value, set: RAID_SETS[e.target.value][0] })}>
+              {RAID_OPTIONS.map((rt) => (<option key={rt}>{rt}</option>))}
             </select>
 
             <select className="control" value={rows[tier].spare} onChange={(e) => setRow(tier, { spare: e.target.value })}>
-              <option>1/32</option>
-              <option>2/32</option>
+              <option>1/32</option><option>2/32</option>
             </select>
 
             <select className="control" value={rows[tier].set} onChange={(e) => setRow(tier, { set: e.target.value })}>
-              {RAID_SETS[rows[tier].raid].map((s) => (
-                <option key={s}>{s}</option>
-              ))}
+              {RAID_SETS[rows[tier].raid].map((s) => (<option key={s}>{s}</option>))}
             </select>
 
             <select className="control" value={rows[tier].count} onChange={(e) => setRow(tier, { count: Number(e.target.value) })}>
-              {[0, ...countOptions(tier)].map((c) => (
-                <option key={c}>{c}</option>
-              ))}
+              {[...Array(97).keys()].map((c) => (<option key={c}>{c}</option>))}
             </select>
           </div>
         ))}
 
-        <button className="btn" onClick={onCalc} disabled={loading}>
-          {loading ? "Calculating…" : "Calculate"}
-        </button>
+        <button className="btn" onClick={onCalc} disabled={loading}>{loading ? "Calculating…" : "Calculate"}</button>
 
         {error && <div className="alert">{error}</div>}
 
@@ -190,24 +162,10 @@ export default function Home() {
           <h2>Results</h2>
           {results.length > 0 ? (
             <>
-              <ul>
-                {results.map((r) => (
-                  <li key={r.tier}>
-                    <b>{r.tier}:</b> {r.usableTB.toFixed(2)} TB
-                  </li>
-                ))}
-              </ul>
-              <div className="total">
-                Total:{" "}
-                {results
-                  .reduce((a, b) => a + b.usableTB, 0)
-                  .toFixed(2)}{" "}
-                TB
-              </div>
+              <ul>{results.map((r) => (<li key={r.tier}><b>{r.tier}:</b> {r.usableTB.toFixed(2)} TB</li>))}</ul>
+              <div className="total">Total: {results.reduce((a, b) => a + b.usableTB, 0).toFixed(2)} TB</div>
             </>
-          ) : (
-            <p className="muted">No rows selected. Increase Count & Calculate.</p>
-          )}
+          ) : (<p className="muted">No rows selected. Increase Count & Calculate.</p>)}
         </section>
       </main>
     </>
